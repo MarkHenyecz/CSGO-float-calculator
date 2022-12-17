@@ -1,12 +1,10 @@
 pub mod floatmerge;
 use std::{io::{self, Write}, fs::File};
 use itertools::Itertools;
-use tokio;
 
 use floatmerge::Skin;
 
-#[tokio::main]
-async fn main() -> io::Result<()> {
+fn main() -> io::Result<()> {
     let files = floatmerge::read_files();
     let filtered = floatmerge::filter_files(files);
 
@@ -32,7 +30,7 @@ async fn main() -> io::Result<()> {
 
     println!("Needed float average is: {}", float_avrage.0);
 
-    generate_combinations(&skins, float_avrage.0, float_avrage.1, float_avrage.2).await?;
+    generate_combinations(&skins, float_avrage.0, float_avrage.1, float_avrage.2)?;
 
     Ok(())
 }
@@ -46,7 +44,7 @@ fn calculate_float_avrage(input: String) -> (f64, f64, f64) {
     return ((-min_float + input_value) / float_range, float_range, min_float); // calculates the float average from the given wanted float and the float range
 }
 
-async fn generate_combinations(skins: &Vec<Skin>, float_avrage: f64, float_range: f64, min_float: f64) -> io::Result<()> {
+fn generate_combinations(skins: &Vec<Skin>, float_avrage: f64, float_range: f64, min_float: f64) -> io::Result<()> {
     let output_file: File = File::create("combinations.csv")?;
     output_file.set_len(0)?;
 
