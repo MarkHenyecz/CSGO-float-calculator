@@ -53,6 +53,7 @@ fn generate_combinations(skins: &Vec<Skin>, float_avrage: f64, float_range: f64,
     let mut last_diff = 100.0; // default last float avg difference
 
     let mut count: i32 = 0;
+    let mut insert_id = 0;
     for skin_comb in comb {
         count += 1;
 
@@ -85,7 +86,8 @@ fn generate_combinations(skins: &Vec<Skin>, float_avrage: f64, float_range: f64,
                 });
             }
 
-            write_to_file(output_file.try_clone()?, futureskin_comb, difference, count, float_avrage, skins_avrage, new_float);
+            insert_id += 1;
+            write_to_file(output_file.try_clone()?, futureskin_comb, difference, count, insert_id, float_avrage, skins_avrage, new_float);
         }
 
         if float_avrage == skins_avrage {
@@ -108,11 +110,11 @@ fn generate_combinations(skins: &Vec<Skin>, float_avrage: f64, float_range: f64,
     Ok(())
 }
 
-fn write_to_file(mut output_file: File, skin_comb: Vec<Skin>, difference: f64, count: i32, wanted: f64, found: f64, possible: f64) {
+fn write_to_file(mut output_file: File, skin_comb: Vec<Skin>, difference: f64, count: i32, insert_id: i32, wanted: f64, found: f64, possible: f64) {
     println!("New closer one found: {}", difference);
     println!("Calculation ID: {}", count);
 
-    let _ = output_file.write_all("ID: {id}/{count}\n".replace("{id}", &count.to_string()).as_bytes());
+    let _ = output_file.write_all("ID: {id}/{count}\n".replace("{id}", &insert_id.to_string()).replace("{count}", &count.to_string()).as_bytes());
     let _ = output_file.write_all("New closest average found: '{float}'\n".replace("{float}", &found.to_string()).as_bytes());
     let _ = output_file.write_all("Wanted float average: '{float}'\n".replace("{float}", &wanted.to_string()).as_bytes());
     let _ = output_file.write_all("Float average difference: '{float}'\n".replace("{float}", &difference.to_string()).as_bytes());
@@ -123,7 +125,11 @@ fn write_to_file(mut output_file: File, skin_comb: Vec<Skin>, difference: f64, c
     let mut combination_string = String::from("(");
     for skin in skin_comb {
         combination_string.push_str(&"[{float}],".replace("{float}", &skin.float.to_string()));
-        price += skin.price.replace("€", "").parse::<f32>().unwrap();
+        let price_modification = skin.price.replace("€", "").parse::<f32>();
+        price += match price_modification {
+            Ok(value) => value,
+            Err(_) => 0.0
+        };
     }
     combination_string.remove(combination_string.len()-1);
     combination_string.push_str(")\n");
