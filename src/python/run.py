@@ -47,8 +47,9 @@ for i in comb:
     sumData = 0 # sum of 10 floats in the combination
     for i2 in i:
         sumData += i2[0] # calculates the sum of 10 floats in the combination
-        combID += 1 # number of combinations calculated
-        print('Progress: ', f'{combID:,}', " combinations \r", end="") # prints the combinations progress into a new line
+        
+    combID += 1 # number of combinations calculated 
+    print('Progress: ', f'{combID:,}', " combinations \r", end="") # prints the combinations progress into a new line
 
     newData = sumData/len(i) # calculates the average of [n]th float combination
 

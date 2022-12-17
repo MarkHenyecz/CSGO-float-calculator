@@ -1,9 +1,9 @@
-use std::{fs::{self, ReadDir, File}, path::PathBuf, collections::LinkedList, io::{Write, Read}, string};
+use std::{fs::{self, ReadDir, File}, path::PathBuf, io::{Write}};
 
 
 pub struct Skin {
     pub name: String,
-    pub float: f32,
+    pub float: f64,
     pub price: String,
 }
 
@@ -11,20 +11,20 @@ pub fn read_files() -> ReadDir {
     return fs::read_dir("./").unwrap()
 }
 
-pub fn filter_files(files: ReadDir) -> LinkedList<PathBuf> {
-    let mut response = LinkedList::new();
+pub fn filter_files(files: ReadDir) -> Vec<PathBuf> {
+    let mut response = Vec::new();
     
     for file in files {
         let path = file.unwrap().path();
         if path.extension() != None && path.extension().unwrap() == "txt" {
-            response.push_back(path)
+            response.push(path)
         }
     }
 
     return response;
 }
 
-pub fn format_output(files: LinkedList<PathBuf>) -> std::io::Result<File> {
+pub fn format_output(files: Vec<PathBuf>) -> std::io::Result<File> {
     let mut output_file = File::create("output.csv")?;
     output_file.set_len(0)?;
 
@@ -54,19 +54,8 @@ pub fn format_output(files: LinkedList<PathBuf>) -> std::io::Result<File> {
     Ok(output_file)
 }
 
-fn rem(path: &str) {
-    use std::io::ErrorKind;
-  
-    let message = match std::fs::remove_file(path) {
-      Ok(()) => "ok",
-      Err(e) if e.kind() == ErrorKind::NotFound => "not found",
-      Err(e) => "other",
-    };
-    println!("{message}");
-}
-
-pub fn output_to_skin(mut file: File) -> LinkedList<Skin> {
-    let mut response = LinkedList::new();
+pub fn output_to_skin() -> Vec<Skin> {
+    let mut response = Vec::new();
 
     let data = fs::read_to_string("output.csv").expect("Unable to read file");
 
@@ -90,14 +79,14 @@ pub fn output_to_skin(mut file: File) -> LinkedList<Skin> {
                 skin.name = String::from(data.1);
             }
             if data.0 == 1 {
-                let float = data.1.parse::<f32>().unwrap();
+                let float = data.1.parse::<f64>().unwrap();
                 skin.float = float;
             }
             if data.0 == 2 {
                 skin.price = String::from(data.1);
             }
         }
-        response.push_back(skin);
+        response.push(skin);
     }
 
     return response;
