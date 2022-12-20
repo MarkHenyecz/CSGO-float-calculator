@@ -18,7 +18,7 @@ fn main() -> io::Result<()> {
     let stdin = io::stdin();
     stdin.read_line(&mut user_input)?;
 
-    if user_input.to_lowercase() == "q\n" {
+    if user_input.replace("\n", "").replace("\r", "").to_lowercase() == "q" {
         println!("File saved as floats.csv");
         return Ok(());
     }
@@ -39,7 +39,7 @@ fn calculate_float_avrage(input: String) -> (f64, f64, f64) {
     let min_float = 0.06; // minimum float from range
     let max_float = 0.80; // maximum float from range
     let float_range = max_float - min_float; // float range of the available skin floats (eg. 0.00-0.99)
-    let input_value = input.replace("\n", "").parse::<f64>().unwrap();
+    let input_value = input.replace("\n", "").replace("\r", "").parse::<f64>().unwrap();
 
     return ((-min_float + input_value) / float_range, float_range, min_float); // calculates the float average from the given wanted float and the float range
 }
@@ -99,7 +99,7 @@ fn generate_combinations(skins: &Vec<Skin>, float_avrage: f64, float_range: f64,
             let stdin = io::stdin();
             stdin.read_line(&mut user_input)?;
 
-            if user_input.to_lowercase() == "q\n" {
+            if user_input.replace("\n", "").replace("\r", "").to_lowercase() == "q" {
                 break;
             }
         }
