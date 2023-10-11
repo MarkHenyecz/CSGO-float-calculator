@@ -1,10 +1,9 @@
 pub mod floatmerge;
-use std::{io::{self, Write}, fs::File, sync::{Arc}, collections::HashMap, result};
+use std::{io::{self, Write}, fs::File};
 use itertools::Itertools;
 use futures::future::join_all;
 
 use floatmerge::Skin;
-use tokio::sync::Mutex;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
@@ -125,7 +124,7 @@ async fn generate_combinations(skins: Vec<Skin>, float_avrage: f64, float_range:
     
                     let mut user_input = String::new();
                     let stdin = io::stdin();
-                    stdin.read_line(&mut user_input);
+                    let _ = stdin.read_line(&mut user_input);
     
                     if user_input.replace("\n", "").replace("\r", "").to_lowercase() == "q" {
                         break;
