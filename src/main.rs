@@ -1,10 +1,13 @@
 pub mod floatmerge;
-use std::{io::{self, Write}, fs::File};
+use std::{io::{self, Write}, fs::File, sync::{Arc}, collections::HashMap, result};
 use itertools::Itertools;
+use futures::future::join_all;
 
 use floatmerge::Skin;
+use tokio::sync::Mutex;
 
-fn main() -> io::Result<()> {
+#[tokio::main]
+async fn main() -> io::Result<()> {
     let files = floatmerge::read_files();
     let filtered = floatmerge::filter_files(files);
 
@@ -30,7 +33,7 @@ fn main() -> io::Result<()> {
 
     println!("Needed float average is: {}", float_avrage.0);
 
-    generate_combinations(&skins, float_avrage.0, float_avrage.1, float_avrage.2)?;
+    generate_combinations(skins, float_avrage.0, float_avrage.1, float_avrage.2).await?;
 
     Ok(())
 }
@@ -44,64 +47,92 @@ fn calculate_float_avrage(input: String) -> (f64, f64, f64) {
     return ((-min_float + input_value) / float_range, float_range, min_float); // calculates the float average from the given wanted float and the float range
 }
 
-fn generate_combinations(skins: &Vec<Skin>, float_avrage: f64, float_range: f64, min_float: f64) -> io::Result<()> {
-    let output_file: File = File::create("combinations.csv")?;
+struct CombinationResult<'a> {
+    pub difference: f64,
+    pub skins_avrage: f64,
+    pub combination: Vec<&'a Skin>,
+}
+
+async fn generate_combinations(skins: Vec<Skin>, float_avrage: f64, float_range: f64, min_float: f64) -> io::Result<()> {
+    let output_file_name = "combinations.csv";
+    let output_file = File::create(output_file_name)?;
     output_file.set_len(0)?;
 
-    let comb = skins.iter().combinations(10);
+    let comb = skins.leak().iter().combinations(10);
 
     let mut last_diff = 100.0; // default last float avg difference
 
     let mut count: i32 = 0;
     let mut insert_id = 0;
+
+    let worker_count = 10;
+    let mut handles = Vec::new();
+
     for skin_comb in comb {
         count += 1;
 
-        let mut comb_total = 0.0;
-        for skin in skin_comb.clone() {
-            comb_total += skin.float;
-        }
-
-        let skins_avrage = comb_total / skin_comb.iter().count() as f64;
-
-        // spawn(print_count(count));
-
-        let mut difference = float_avrage - skins_avrage;
-
-        if difference < 0.0 {
-            difference = difference * -1.0;
-        }
-
-        if last_diff > difference {
-            last_diff = difference;
-            let new_float = float_range * skins_avrage + min_float; // calculates the possible skin float from the float average of [n]th float combination
-        
-            let mut futureskin_comb = vec![];
-
+        let handle = tokio::spawn(async move {
+            let mut comb_total = 0.0;
             for skin in skin_comb.clone() {
-                futureskin_comb.push(Skin{
-                    name: skin.name.clone(),
-                    float: skin.float,
-                    price: skin.price.clone()
-                });
+                comb_total += skin.float;
             }
 
-            insert_id += 1;
-            write_to_file(output_file.try_clone()?, futureskin_comb, difference, count, insert_id, float_avrage, skins_avrage, new_float);
-        }
+            let skins_avrage = comb_total / skin_comb.iter().count() as f64;
 
-        if float_avrage == skins_avrage {
-            last_diff = 100.0;
+            // spawn(print_count(count));
 
-            println!("Exact match found! If you want to continue press Enter, if not type q.");
+            let mut difference = float_avrage - skins_avrage;
 
-            let mut user_input = String::new();
-            let stdin = io::stdin();
-            stdin.read_line(&mut user_input)?;
-
-            if user_input.replace("\n", "").replace("\r", "").to_lowercase() == "q" {
-                break;
+            if difference < 0.0 {
+                difference = difference * -1.0;
             }
+
+            return CombinationResult{
+                difference: difference,
+                combination: skin_comb,
+                skins_avrage: skins_avrage
+            };
+        });
+
+        handles.push(handle);
+        if handles.len() >= worker_count {
+            let results = join_all(handles).await;
+            for handle in results {
+                let result: CombinationResult = handle?;
+
+                if last_diff > result.difference {
+                    last_diff = result.difference;
+                    let new_float = float_range * result.skins_avrage + min_float; // calculates the possible skin float from the float average of [n]th float combination
+                
+                    let mut futureskin_comb = vec![];
+    
+                    for skin in result.combination.clone() {
+                        futureskin_comb.push(Skin{
+                            name: skin.name.clone(),
+                            float: skin.float,
+                            price: skin.price.clone()
+                        });
+                    }
+    
+                    insert_id += 1;
+                    write_to_file(output_file.try_clone()?, futureskin_comb, result.difference, count, insert_id, float_avrage, result.skins_avrage, new_float);
+                }
+    
+                if float_avrage == result.skins_avrage {
+                    last_diff = 100.0;
+    
+                    println!("Exact match found! If you want to continue press Enter, if not type q.");
+    
+                    let mut user_input = String::new();
+                    let stdin = io::stdin();
+                    stdin.read_line(&mut user_input);
+    
+                    if user_input.replace("\n", "").replace("\r", "").to_lowercase() == "q" {
+                        break;
+                    }
+                }
+            }
+            handles = Vec::new();
         }
     }
     println!("Combinations checked: {}", count);
